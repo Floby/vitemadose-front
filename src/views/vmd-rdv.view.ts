@@ -64,6 +64,7 @@ export class VmdRdvView extends LitElement {
       const location = await State.current.localisationNavigateur()
       if (location === 'bloqué') {
         this.geolocalisationBloquée = true
+        this.prévenirSiBloqué()
       } else if (location === 'indisponible') {
         this.geolocalisationIndisponible = true
       } else {
