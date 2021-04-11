@@ -9,6 +9,7 @@ import rdvViewCss from "../styles/views/_rdv.scss";
 import delay from "../delay"
 import distanceEntreDeuxPoints from "../distance"
 import {
+    Lieu,
     LieuxParDepartement,
     Coordinates,
     CodeDepartement,
@@ -49,10 +50,10 @@ export class VmdRdvView extends LitElement {
       let lieux = this.lieuxParDepartement?.lieuxDisponibles || []
       if (this.critèreDeTri === 'distance' && this.userLocation) {
         const origin = this.userLocation
-        const distanceTo = distanceEntreDeuxPoints.bind(null, origin)
+        const distanceAvec = (lieu: Lieu) => lieu.location ? distanceEntreDeuxPoints(origin, lieu.location) : Infinity
         return [...lieux].sort((a, b) => {
-          const distanceA = distanceTo(a.location)
-          const distanceB = distanceTo(b.location)
+          const distanceA = distanceAvec(a)
+          const distanceB = distanceAvec(b)
           return distanceA - distanceB
         })
       }
@@ -190,7 +191,7 @@ export class VmdRdvView extends LitElement {
                 <div class="resultats p-5 text-dark bg-light rounded-3">
                     ${repeat(this.lieuxDisponiblesTriés, (c => `${c.departement}||${c.nom}||${c.plateforme}||${this.critèreDeTri}`), (lieu, index) => {
                         let distance = undefined
-                        if (this.userLocation) {
+                        if (this.userLocation && lieu.location) {
                           distance = distanceEntreDeuxPoints(this.userLocation, lieu.location)
                         }
                         return html`<vmd-appointment-card .lieu="${lieu}" .rdvPossible="${true}" .index="${index}" .distance="${distance}" />`;
