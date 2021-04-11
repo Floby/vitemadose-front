@@ -7,6 +7,7 @@ import globalCss from "../styles/global.scss";
 import {Router} from "../routing/Router";
 import rdvViewCss from "../styles/views/_rdv.scss";
 import delay from "../delay"
+import distanceEntreDeuxPoints from "../distance"
 import {
     LieuxParDepartement,
     Coordinates,
@@ -47,8 +48,8 @@ export class VmdRdvView extends LitElement {
     get lieuxDisponiblesTriés () {
       let lieux = this.lieuxParDepartement?.lieuxDisponibles || []
       if (this.critèreDeTri === 'distance' && this.userLocation) {
-        const origin = this.userLocation as Coordinates
-        const distanceTo = getDistanceFromLatLonInKm.bind(null, origin)
+        const origin = this.userLocation
+        const distanceTo = distanceEntreDeuxPoints.bind(null, origin)
         return [...lieux].sort((a, b) => {
           const distanceA = distanceTo(a.location)
           const distanceB = distanceTo(b.location)
@@ -60,29 +61,17 @@ export class VmdRdvView extends LitElement {
 
     async trierParDistance (e: Event) {
       e.preventDefault()
-      try {
-        const location = await this.localisationNavigateur()
+      const location = await State.current.localisationNavigateur()
+      if (location === 'bloqué') {
+        this.geolocalisationBloquée = true
+      } else if (location === 'indisponible') {
+        this.geolocalisationIndisponible = true
+      } else {
         this.userLocation = location
         this.critèreDeTri = 'distance'
-      } catch (error) {
-        if (error instanceof GeolocationPositionError) {
-          if (error.code === 1) {
-            this.geolocalisationBloquée = true
-          }
-          this.geolocalisationIndisponible = true
-        }
       }
     }
 
-    async localisationNavigateur (): Promise<Coordinates> {
-      const { coords } = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 2000,
-        })
-      })
-      return coords as Coordinates
-    }
     async prévenirSiBloqué () {
       if (this.geolocalisationBloquée && !this.afficherMessageGeoloc) {
         this.afficherMessageGeoloc = true
@@ -201,7 +190,7 @@ export class VmdRdvView extends LitElement {
                     ${repeat(this.lieuxDisponiblesTriés, (c => `${c.departement}||${c.nom}||${c.plateforme}||${this.critèreDeTri}`), (lieu, index) => {
                         let distance = undefined
                         if (this.userLocation) {
-                          distance = getDistanceFromLatLonInKm(this.userLocation, lieu.location)
+                          distance = distanceEntreDeuxPoints(this.userLocation, lieu.location)
                         }
                         return html`<vmd-appointment-card .lieu="${lieu}" .rdvPossible="${true}" .index="${index}" .distance="${distance}" />`;
                     })}
@@ -271,22 +260,4 @@ export class VmdRdvView extends LitElement {
             Router.navigateToRendezVous(this.codeDepartementSelectionne, libelleUrlPathDuDepartement(this.departementSelectionne!), this.codeTrancheAgeSelectionne);
         }
     }
-}
-
-function getDistanceFromLatLonInKm({ latitude: lat1, longitude: lon1 }: Coordinates, { latitude: lat2, longitude: lon2 }: Coordinates) {
-  var R = 6371; // Radius of the earth in km
-  var dLat = deg2rad(lat2-lat1);  // deg2rad below
-  var dLon = deg2rad(lon2-lon1);
-  var a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-    Math.sin(dLon/2) * Math.sin(dLon/2)
-    ;
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  var kilometers = R * c; // Distance in km
-  return kilometers;
-}
-
-function deg2rad(deg: number) {
-  return deg * (Math.PI/180)
 }
